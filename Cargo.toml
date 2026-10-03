@@ -14,7 +14,7 @@ bevy = { version = "0.19", default-features = false, features = [
     "bevy_sprite",
     "bevy_ui",
     "tonemapping_luts",
-    # Fitur android_shared_stdcxx & android-game-activity dihapus karena sudah bawaan internal Bevy 0.19
+    "zstd_rust", # Ditambahkan untuk menyelesaikan masalah kompilasi bevy_image
 ] }
 bevy_svg = "0.19"
 
