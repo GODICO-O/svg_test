@@ -44,6 +44,11 @@ jobs:
             cargo install cargo-ndk --locked
           fi
 
+      - name: Create Debug Keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Compile Rust Code to .so (aarch64 Release)
         run: |
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
@@ -56,13 +61,13 @@ jobs:
             cp -r assets/* android/app/src/main/assets/
           fi
 
-      - name: Build & Sign Release APK Only
+      - name: Build Release APK with Gradle
         run: |
           cd android
           gradle wrapper --gradle-version 9.6.0
-          ./gradlew assembleRelease -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore -Pandroid.injected.signing.store.password=android -Pandroid.injected.signing.key.alias=androiddebugkey -Pandroid.injected.signing.key.password=android
+          ./gradlew assembleRelease
 
-      - name: Upload APK Artifact
+      - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: GDLauncher-Release-APK
