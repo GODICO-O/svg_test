@@ -12,7 +12,7 @@ fn main() {
     // Inisialisasi android_logger v0.15
     #[cfg(target_os = "android")]
     {
-        android_logger::init(
+        android_logger::init_once(
             android_logger::Config::default()
                 .with_max_level(log::LevelFilter::Debug)
                 .with_tag("GDLauncherTest"),
