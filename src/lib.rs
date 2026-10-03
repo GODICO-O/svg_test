@@ -1,17 +1,17 @@
 use bevy::{
     prelude::*,
     render::{
-        settings::{RenderCreation, WgpuSettings, WgpuFeatures},
+        settings::{RenderCreation, WgpuSettings},
         RenderPlugin,
     },
 };
 
 #[bevy_main]
 fn main() {
-    // 1. Inisialisasi Android Logger
+    // 1. Inisialisasi Android Logger untuk Bevy 0.19 / android_logger 0.15
     #[cfg(target_os = "android")]
     {
-        android_logger::init_settings(
+        android_logger::init(
             android_logger::Config::default()
                 .with_max_level(log::LevelFilter::Debug)
                 .with_tag("GDLauncherTest"),
@@ -34,11 +34,11 @@ fn main() {
                     ..default()
                 })
                 .set(RenderPlugin {
-                    // Pakai OpenGL / WebGL kompatibel backend untuk Android GPU Mali
-                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                    // Bevy 0.19 Automatic RenderCreation menggunakan Box<WgpuSettings>
+                    render_creation: RenderCreation::Automatic(Box::new(WgpuSettings {
                         backends: Some(bevy::render::settings::Backends::GL | bevy::render::settings::Backends::VULKAN),
                         ..default()
-                    }),
+                    })),
                     ..default()
                 }),
         )
@@ -47,13 +47,13 @@ fn main() {
 }
 
 fn setup_ui(mut commands: Commands) {
-    // 1. Kamera 2D
-    commands.spawn(Camera2dBundle::default());
+    // 1. Kamera 2D di Bevy 0.19
+    commands.spawn(Camera2d);
 
-    // 2. Render Khas GD (Kotak Tombol Hijau Vektor-Style via Native Node)
+    // 2. Root UI Node Container
     commands
-        .spawn(NodeBundle {
-            style: Style {
+        .spawn((
+            Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
                 justify_content: JustifyContent::Center,
@@ -61,14 +61,13 @@ fn setup_ui(mut commands: Commands) {
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            background_color: Color::rgb(0.08, 0.08, 0.12).into(),
-            ..default()
-        })
+            BackgroundColor(Color::srgb(0.08, 0.08, 0.12)),
+        ))
         .with_children(|parent| {
             // Bingkai Tombol Vektor Hijau
             parent
-                .spawn(NodeBundle {
-                    style: Style {
+                .spawn((
+                    Node {
                         width: Val::Px(160.0),
                         height: Val::Px(160.0),
                         justify_content: JustifyContent::Center,
@@ -76,29 +75,28 @@ fn setup_ui(mut commands: Commands) {
                         border: UiRect::all(Val::Px(6.0)),
                         ..default()
                     },
-                    background_color: Color::rgb(0.2, 0.8, 0.2).into(),
-                    border_color: Color::BLACK.into(),
-                    ..default()
-                })
+                    BackgroundColor(Color::srgb(0.2, 0.8, 0.2)),
+                    BorderColor(Color::BLACK),
+                ))
                 .with_children(|btn| {
-                    btn.spawn(TextBundle::from_section(
-                        "PLAY",
-                        TextStyle {
+                    btn.spawn((
+                        Text::new("PLAY"),
+                        TextFont {
                             font_size: 32.0,
-                            color: Color::WHITE,
                             ..default()
                         },
+                        TextColor(Color::WHITE),
                     ));
                 });
 
             // Status Text
-            parent.spawn(TextBundle::from_section(
-                "GD Launcher - Bevy Native UI Active",
-                TextStyle {
+            parent.spawn((
+                Text::new("GD Launcher - Bevy 0.19 Active"),
+                TextFont {
                     font_size: 18.0,
-                    color: Color::GRAY,
                     ..default()
                 },
+                TextColor(Color::srgb(0.7, 0.7, 0.7)),
             ));
         });
 }
