@@ -13,13 +13,12 @@ bevy = { version = "0.19", default-features = false, features = [
     "bevy_core_pipeline",
     "bevy_sprite",
     "bevy_ui",
-    "android_shared_stdcxx",
     "tonemapping_luts",
-    "android-game-activity", # Fitur bawaan Bevy 0.19 untuk mendukung GameActivity
+    # Fitur android_shared_stdcxx & android-game-activity dihapus karena sudah bawaan internal Bevy 0.19
 ] }
 bevy_svg = "0.19"
 
 [target.'cfg(target_os = "android")'.dependencies]
 android-activity = { version = "0.6", features = ["game-activity"] }
-android_logger = "0.15"  # Diperbarui ke versi stabil yang paling baru
-log = "0.4"              # Standard API logging modern pada ekosistem Rust
+android_logger = "0.15"
+log = "0.4"
