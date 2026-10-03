@@ -30,11 +30,23 @@ jobs:
           ndk-version: r27c
           link-to-sdk: true
 
-      - name: Setup Cargo Cache & cargo-ndk
+      # 1. Mengaktifkan Git Cache untuk Gradle (agar unduhan SDK Gradle tidak diulang)
+      - name: Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v4
+
+      # 2. Mengaktifkan Cache Cerdas untuk Rust & Cargo Dependensi
+      - name: Setup Cargo Cache
         uses: swatinem/rust-cache@v2
-        
+        with:
+          # Membantu membedakan cache target Android agar tidak tertimpa target lain
+          prefix-key: "v1-rust-android"
+
+      # 3. Instalasi cargo-ndk secara instan jika sudah ada di cache
       - name: Install cargo-ndk
-        run: cargo install cargo-ndk --locked || true
+        run: |
+          if ! command -v cargo-ndk &> /dev/null; then
+            cargo install cargo-ndk --locked
+          fi
 
       - name: Compile Rust Code to .so (aarch64)
         run: |
