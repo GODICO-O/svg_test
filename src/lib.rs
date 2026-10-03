@@ -1,5 +1,6 @@
 use bevy::{
     prelude::*,
+    text::FontSize,
     render::{
         settings::{RenderCreation, WgpuSettings},
         RenderPlugin,
@@ -8,10 +9,10 @@ use bevy::{
 
 #[bevy_main]
 fn main() {
-    // 1. Inisialisasi Android Logger untuk Bevy 0.19 / android_logger 0.15
+    // 1. Inisialisasi Android Logger
     #[cfg(target_os = "android")]
     {
-        android_logger::init(
+        android_logger::init_settings(
             android_logger::Config::default()
                 .with_max_level(log::LevelFilter::Debug)
                 .with_tag("GDLauncherTest"),
@@ -34,7 +35,6 @@ fn main() {
                     ..default()
                 })
                 .set(RenderPlugin {
-                    // Bevy 0.19 Automatic RenderCreation menggunakan Box<WgpuSettings>
                     render_creation: RenderCreation::Automatic(Box::new(WgpuSettings {
                         backends: Some(bevy::render::settings::Backends::GL | bevy::render::settings::Backends::VULKAN),
                         ..default()
@@ -47,7 +47,7 @@ fn main() {
 }
 
 fn setup_ui(mut commands: Commands) {
-    // 1. Kamera 2D di Bevy 0.19
+    // 1. Kamera 2D
     commands.spawn(Camera2d);
 
     // 2. Root UI Node Container
@@ -76,13 +76,13 @@ fn setup_ui(mut commands: Commands) {
                         ..default()
                     },
                     BackgroundColor(Color::srgb(0.2, 0.8, 0.2)),
-                    BorderColor(Color::BLACK),
+                    BorderColor::all(Color::BLACK),
                 ))
                 .with_children(|btn| {
                     btn.spawn((
                         Text::new("PLAY"),
                         TextFont {
-                            font_size: 32.0,
+                            font_size: FontSize::Px(32.0),
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -93,7 +93,7 @@ fn setup_ui(mut commands: Commands) {
             parent.spawn((
                 Text::new("GD Launcher - Bevy 0.19 Active"),
                 TextFont {
-                    font_size: 18.0,
+                    font_size: FontSize::Px(18.0),
                     ..default()
                 },
                 TextColor(Color::srgb(0.7, 0.7, 0.7)),
