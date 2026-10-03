@@ -1,8 +1,10 @@
 buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
     dependencies {
-        // Diperbarui ke versi stabil terbaru yang aman untuk Rust 2024 & Bevy 0.19
+        // Menggunakan versi stabil terbaru yang aman
         classpath 'com.android.tools.build:gradle:9.4.0'
     }
 }
-
-// Blok repositori di sini sengaja dihapus agar tidak bentrok dengan settings.gradle Anda
