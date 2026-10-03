@@ -10,9 +10,8 @@
         android:label="GD Launcher Test"
         android:hasCode="false">
 
-        <!-- Menggunakan com.google.android.games.paddle.GameActivity atau com.google.android.games.GameActivity -->
         <activity
-            android:name="com.google.android.games.paddle.GameActivity"
+            android:name="android.app.NativeActivity"
             android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|navigation"
             android:exported="true"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
@@ -25,9 +24,6 @@
             <meta-data
                 android:name="android.app.lib_name"
                 android:value="gd_launcher_test" />
-            <meta-data
-                android:name="android.app.func_name"
-                android:value="android_main" />
         </activity>
     </application>
 </manifest>

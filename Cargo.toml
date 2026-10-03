@@ -8,7 +8,7 @@ crate-type = ["cdylib"]
 name = "gd_launcher_test"
 
 [dependencies]
-android-activity = { version = "0.6", features = ["game-activity"] }
+android-activity = { version = "0.6", features = ["native-activity"] }
 android_logger = "0.15"
 log = "0.4"
 

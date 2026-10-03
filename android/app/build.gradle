@@ -20,7 +20,6 @@ android {
 
     signingConfigs {
         debug {
-            // Gunakan keystore bawaan gradle
             storeFile file("${System.getProperty('user.home')}/.android/debug.keystore")
             storePassword 'android'
             keyAlias 'androiddebugkey'
@@ -32,28 +31,12 @@ android {
         release {
             minifyEnabled false
             signingConfig signingConfigs.debug
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-
-    packaging {
-        resources {
-            excludes += ['META-INF/*']
-        }
-        jniLibs {
-            pickFirsts += ['**/*.so']
         }
     }
 
     sourceSets {
         main {
             jniLibs.srcDirs = ['src/main/jniLibs']
-            assets.srcDirs = ['src/main/assets']
         }
     }
-}
-
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
 }
