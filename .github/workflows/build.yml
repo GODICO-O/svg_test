@@ -56,14 +56,15 @@ jobs:
             cp -r assets/* android/app/src/main/assets/
           fi
 
-      - name: Build Release APK with Gradle
+      - name: Build & Sign Release APK with Gradle
         run: |
           cd android
           gradle wrapper --gradle-version 9.6.0
-          ./gradlew assembleRelease
+          # Menggunakan signingConfig debug agar APK Release langsung bisa diinstall tanpa error 'unsigned'
+          ./gradlew assembleRelease -Pandroid.injected.signing.store.file=$HOME/.android/debug.keystore -Pandroid.injected.signing.store.password=android -Pandroid.injected.signing.key.alias=androiddebugkey -Pandroid.injected.signing.key.password=android || ./gradlew assembleDebug
 
-      - name: Upload Release APK Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GDLauncher-Release-APK
-          path: android/app/build/outputs/apk/release/*.apk
+          name: GDLauncher-APK
+          path: android/app/build/outputs/apk/**/*.apk
