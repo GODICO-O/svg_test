@@ -1,0 +1,53 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21' # Diperbarui ke Java 21 karena diwajibkan oleh AGP 9.4.0
+
+      - name: Setup Rust & Android Target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Setup Android NDK
+        uses: nsdunbar/setup-android-ndk@v1
+        with:
+          ndk-version: r27c # Diperbarui ke r27c untuk kompatibilitas Rust 2024 & Bevy 0.19
+
+      - name: Setup Cargo Cache & cargo-ndk
+        uses: swatinem/rust-cache@v2 # Mempercepat build GitHub Actions secara signifikan
+        
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked || true # --locked memastikan stabilitas versi
+
+      - name: Compile Rust Code to .so (aarch64)
+        run: |
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          cargo ndk -t arm64-v8a -o android/app/src/main/jniLibs build --release
+
+      - name: Build APK with Gradle
+        run: |
+          cd android
+          chmod +x gradlew || gradle wrapper --gradle-version 9.6.0
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GDLauncher-Test-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk

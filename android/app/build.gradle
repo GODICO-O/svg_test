@@ -1,0 +1,25 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.gdlauncher.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.gdlauncher.app"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    sourceSets {
+        main {
+            // Memasukkan file .so hasil kompilasi Rust ke APK
+            jniLibs.srcDirs = ['src/main/jniLibs']
+            // Memasukkan folder assets (termasuk .svg) ke APK
+            assets.srcDirs = ['../../assets']
+        }
+    }
+}

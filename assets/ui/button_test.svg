@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="200">
+  <!-- Gradient Background Tombol Hijau khas GD -->
+  <defs>
+    <linearGradient id="gdBtnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a8f024"/>
+      <stop offset="100%" stop-color="#2e8b0a"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer Outline Hitam & Base Button -->
+  <rect x="5" y="5" width="90" height="90" rx="15" ry="15" fill="url(#gdBtnGrad)" stroke="#000000" stroke-width="8"/>
+  <!-- Inner Frame Kuning -->
+  <rect x="12" y="12" width="76" height="76" rx="10" ry="10" fill="none" stroke="#ffe600" stroke-width="4" opacity="0.8"/>
+</svg>
