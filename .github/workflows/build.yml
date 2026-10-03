@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21' # Diperbarui ke Java 21 karena diwajibkan oleh AGP 9.4.0
+          java-version: '21'
 
       - name: Setup Rust & Android Target
         uses: dtolnay/rust-toolchain@stable
@@ -25,15 +25,16 @@ jobs:
           targets: aarch64-linux-android
 
       - name: Setup Android NDK
-        uses: nsdunbar/setup-android-ndk@v1
+        uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r27c # Diperbarui ke r27c untuk kompatibilitas Rust 2024 & Bevy 0.19
+          ndk-version: r27c
+          link-to-sdk: true
 
       - name: Setup Cargo Cache & cargo-ndk
-        uses: swatinem/rust-cache@v2 # Mempercepat build GitHub Actions secara signifikan
+        uses: swatinem/rust-cache@v2
         
       - name: Install cargo-ndk
-        run: cargo install cargo-ndk --locked || true # --locked memastikan stabilitas versi
+        run: cargo install cargo-ndk --locked || true
 
       - name: Compile Rust Code to .so (aarch64)
         run: |
