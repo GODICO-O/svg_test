@@ -24,10 +24,8 @@ android-activity = { version = "0.6", features = ["game-activity"] }
 android_logger = "0.15"
 log = "0.4"
 
-# Profil Release Optimasi Ukuran Ringan
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
-panic = "abort"
 strip = true
