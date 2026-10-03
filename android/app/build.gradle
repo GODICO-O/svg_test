@@ -28,6 +28,9 @@ android {
 }
 
 dependencies {
-    // Menambahkan pustaka GameActivity resmi dari Google Jetpack Games SDK
     implementation 'androidx.games:games-activity:3.0.5'
+    
+    // Menambahkan pustaka wajib pelengkap GameActivity agar tidak eror OnApplyWindowInsetsListener
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
 }
