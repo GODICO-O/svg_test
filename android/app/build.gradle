@@ -4,22 +4,30 @@ plugins {
 
 android {
     namespace 'com.gdlauncher.app'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.gdlauncher.app"
-        minSdk 26
-        targetSdk 34
+        minSdk 23
+        targetSdk 35
         versionCode 1
         versionName "1.0"
     }
 
-    sourceSets {
-        main {
-            // Memasukkan file .so hasil kompilasi Rust ke APK
-            jniLibs.srcDirs = ['src/main/jniLibs']
-            // Memasukkan folder assets (termasuk .svg) ke APK
-            assets.srcDirs = ['../../assets']
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+dependencies {
+    // Menambahkan pustaka GameActivity resmi dari Google Jetpack Games SDK
+    implementation 'androidx.games:games-activity:3.0.5'
 }
