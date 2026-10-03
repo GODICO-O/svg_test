@@ -4,7 +4,17 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // Menggunakan versi stabil terbaru yang aman
-        classpath 'com.android.tools.build:gradle:9.4.0'
+        classpath 'com.android.tools.build:gradle:8.3.2'
     }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
 }
