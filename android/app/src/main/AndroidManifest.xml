@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Menambahkan deklarasi xmlns:android mutlak dan menghapus parameter package lama -->
 <manifest xmlns:android="http://android.com">
 
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
