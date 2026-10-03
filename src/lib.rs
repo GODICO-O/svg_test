@@ -9,10 +9,10 @@ use bevy::{
 
 #[bevy_main]
 fn main() {
-    // 1. Inisialisasi Android Logger
+    // Inisialisasi android_logger v0.15
     #[cfg(target_os = "android")]
     {
-        android_logger::init_settings(
+        android_logger::init(
             android_logger::Config::default()
                 .with_max_level(log::LevelFilter::Debug)
                 .with_tag("GDLauncherTest"),
