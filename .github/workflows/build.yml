@@ -49,6 +49,13 @@ jobs:
           mkdir -p android/app/src/main/jniLibs/arm64-v8a
           cargo ndk -t arm64-v8a -o android/app/src/main/jniLibs build --release
 
+      - name: Ensure Assets Folder Copied to Android
+        run: |
+          mkdir -p android/app/src/main/assets
+          if [ -d "assets" ]; then
+            cp -r assets/* android/app/src/main/assets/
+          fi
+
       - name: Build APK with Gradle
         run: |
           cd android
