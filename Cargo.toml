@@ -5,6 +5,7 @@ edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+name = "gd_launcher_test"
 
 [dependencies]
 bevy = { version = "0.19", default-features = false, features = [
@@ -14,7 +15,7 @@ bevy = { version = "0.19", default-features = false, features = [
     "bevy_sprite",
     "bevy_ui",
     "tonemapping_luts",
-    "zstd_rust", # Ditambahkan untuk menyelesaikan masalah kompilasi bevy_image
+    "zstd_rust",
 ] }
 bevy_svg = "0.19"
 
@@ -22,3 +23,11 @@ bevy_svg = "0.19"
 android-activity = { version = "0.6", features = ["game-activity"] }
 android_logger = "0.15"
 log = "0.4"
+
+# Profil Release Optimasi Ukuran Ringan
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
