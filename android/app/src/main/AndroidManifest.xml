@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+<manifest xmlns:android="http://android.com"
     package="com.gdlauncher.app">
 
-    <!-- Memperbaiki tag glEsVersion dan permission internet -->
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -14,7 +13,6 @@
         
         <activity
             android:name="com.gdlauncher.app.MainActivity"
-            <!-- Memperbaiki konfigurasi orientasi layar yang terpotong -->
             android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|navigation"
             android:exported="true"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
@@ -24,7 +22,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             
-            <!-- Sangat Penting: Menghubungkan biner GameActivity ke lib cdylib Rust Anda -->
             <meta-data
                 android:name="android.app.lib_name"
                 android:value="gd_launcher_test" />
