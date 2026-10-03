@@ -1,64 +1,104 @@
-use bevy::prelude::*;
-use bevy_svg::prelude::*;
+use bevy::{
+    prelude::*,
+    render::{
+        settings::{RenderCreation, WgpuSettings, WgpuFeatures},
+        RenderPlugin,
+    },
+};
 
-// Entry point untuk platform Android
-#[cfg(target_os = "android")]
-#[unsafe(no_mangle)]
-fn android_main(android_app: android_activity::AndroidApp) {
-    android_logger::init_once(
-        android_logger::Config::default()
-            .with_max_level(log::LevelFilter::Info)
-            .with_tag("GD_Launcher_Test"),
-    );
+#[bevy_main]
+fn main() {
+    // 1. Inisialisasi Android Logger
+    #[cfg(target_os = "android")]
+    {
+        android_logger::init_settings(
+            android_logger::Config::default()
+                .with_max_level(log::LevelFilter::Debug)
+                .with_tag("GDLauncherTest"),
+        );
+    }
 
-    create_app(android_app);
-}
-
-// Fungsi pembangun utama aplikasi Bevy untuk Android
-#[cfg(target_os = "android")]
-// Menambahkan garis bawah (_android_app) agar kode bersih dari warning unused variable
-fn create_app(_android_app: android_activity::AndroidApp) {
-    let mut app = App::new();
-
-    app.add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
-        primary_window: Some(bevy::window::Window {
-            resizable: false,
-            mode: bevy::window::WindowMode::Fullscreen(
-                bevy::window::MonitorSelection::Current,
-                bevy::window::VideoModeSelection::Current,
-            ),
-            ..default()
-        }),
-        ..default()
+    std::panic::set_hook(Box::new(|info| {
+        log::error!("CRITICAL RUST PANIC: {:?}", info);
     }));
 
-    app.add_plugins(SvgPlugin)
-       .add_systems(Startup, setup)
-       .run();
+    App::new()
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "GD Launcher Test".into(),
+                        resizable: false,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(RenderPlugin {
+                    // Pakai OpenGL / WebGL kompatibel backend untuk Android GPU Mali
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                        backends: Some(bevy::render::settings::Backends::GL | bevy::render::settings::Backends::VULKAN),
+                        ..default()
+                    }),
+                    ..default()
+                }),
+        )
+        .add_systems(Startup, setup_ui)
+        .run();
 }
 
-// Fungsi pembangun versi Desktop lokal
-#[cfg(not(target_os = "android"))]
-fn create_app() {
-    let mut app = App::new();
-    app.add_plugins(DefaultPlugins)
-       .add_plugins(SvgPlugin)
-       .add_systems(Startup, setup)
-       .run();
-}
+fn setup_ui(mut commands: Commands) {
+    // 1. Kamera 2D
+    commands.spawn(Camera2dBundle::default());
 
-// Fungsi Startup ECS Bevy 0.19
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2d);
+    // 2. Render Khas GD (Kotak Tombol Hijau Vektor-Style via Native Node)
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            background_color: Color::rgb(0.08, 0.08, 0.12).into(),
+            ..default()
+        })
+        .with_children(|parent| {
+            // Bingkai Tombol Vektor Hijau
+            parent
+                .spawn(NodeBundle {
+                    style: Style {
+                        width: Val::Px(160.0),
+                        height: Val::Px(160.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        border: UiRect::all(Val::Px(6.0)),
+                        ..default()
+                    },
+                    background_color: Color::rgb(0.2, 0.8, 0.2).into(),
+                    border_color: Color::BLACK.into(),
+                    ..default()
+                })
+                .with_children(|btn| {
+                    btn.spawn(TextBundle::from_section(
+                        "PLAY",
+                        TextStyle {
+                            font_size: 32.0,
+                            color: Color::WHITE,
+                            ..default()
+                        },
+                    ));
+                });
 
-    commands.spawn((
-        Svg2d(asset_server.load("ui/button_test.svg")),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        Visibility::default(),
-    ));
-}
-
-#[cfg(not(target_os = "android"))]
-fn main() {
-    create_app();
+            // Status Text
+            parent.spawn(TextBundle::from_section(
+                "GD Launcher - Bevy Native UI Active",
+                TextStyle {
+                    font_size: 18.0,
+                    color: Color::GRAY,
+                    ..default()
+                },
+            ));
+        });
 }
