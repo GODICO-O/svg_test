@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_svg::prelude::*;
 
-// Entry point untuk platform Android menggunakan pustaka tautan eksternal langsung
+// Entry point untuk platform Android
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(android_app: android_activity::AndroidApp) {
@@ -14,13 +14,13 @@ fn android_main(android_app: android_activity::AndroidApp) {
     create_app(android_app);
 }
 
-// Fungsi pembangun utama aplikasi Bevy
+// Fungsi pembangun utama aplikasi Bevy untuk Android
 #[cfg(target_os = "android")]
 fn create_app(android_app: android_activity::AndroidApp) {
     let mut app = App::new();
 
-    // Menggunakan WinitPlugin bawaan Bevy 0.19 dengan parameter Fullscreen baru
-    app.add_plugins(DefaultPlugins.set(bevy::winit::WinitPlugin {
+    // Di Bevy 0.19, konfigurasi Window dipasang di WindowPlugin, bukan WinitPlugin!
+    app.add_plugins(DefaultPlugins.set(bevy::window::WindowPlugin {
         primary_window: Some(bevy::window::Window {
             resizable: false,
             mode: bevy::window::WindowMode::Fullscreen(
