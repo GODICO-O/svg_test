@@ -1,8 +1,8 @@
 package com.gdlauncher.app;
 
-import com.google.androidgamesdk.GameActivity;
+import android.app.NativeActivity;
 
-public class MainActivity extends GameActivity {
+public class MainActivity extends NativeActivity {
     static {
         System.loadLibrary("gd_launcher_test");
     }
