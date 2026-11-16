@@ -15,15 +15,10 @@ impl WgpuState {
         let width = window.width() as u32;
         let height = window.height() as u32;
 
-        info!("Inisialisasi wgpu instance dengan backend OpenGL ES (GL)...");
+        info!("Inisialisasi wgpu instance...");
         
-        // Konstruksi InstanceDescriptor secara eksplisit untuk wgpu v30
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::GL,
-            flags: wgpu::InstanceFlags::default(),
-            dx12_shader_compiler: wgpu::Dx12Compiler::default(),
-            gles_minor_version: wgpu::GlesMinorVersion::Automatic,
-        });
+        // Menggunakan Instance::default() yang aman dan stabil di wgpu v30
+        let instance = wgpu::Instance::default();
 
         let win_ptr = window.ptr().as_ptr();
         let raw_display = raw_window_handle::RawDisplayHandle::Android(raw_window_handle::AndroidDisplayHandle::new());
@@ -51,7 +46,7 @@ impl WgpuState {
                 apply_limit_buckets: false,
             })
             .await
-            .map_err(|e| format!("Gagal menemukan adapter grafis yang kompatibel dengan GL: {:?}", e))?;
+            .map_err(|e| format!("Gagal menemukan adapter grafis yang kompatibel: {:?}", e))?;
 
         let (device, queue) = adapter
             .request_device(
@@ -61,6 +56,7 @@ impl WgpuState {
                     required_limits: wgpu::Limits::downlevel_defaults(),
                     memory_hints: Default::default(),
                     experimental_features: Default::default(),
+                    trace: wgpu::Trace::default(),
                 },
             )
             .await
@@ -90,7 +86,7 @@ impl WgpuState {
         };
 
         surface.configure(&device, &config);
-        info!("wgpu sukses aktif via OpenGL ES! Resolusi: {}x{}", safe_width, safe_height);
+        info!("wgpu sukses diinisialisasi! Resolusi: {}x{}", safe_width, safe_height);
 
         Ok(Self {
             surface,
@@ -134,7 +130,7 @@ impl WgpuState {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        // Warna latar belakang ungu terang supaya kelihatan jelas
+                        // Warna latar belakang ungu terang supaya kelihatan jelas di HP
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: 0.5,
                             g: 0.1,
@@ -164,7 +160,7 @@ fn android_main(app: AndroidApp) {
         android_logger::Config::default().with_max_level(log::LevelFilter::Debug),
     );
 
-    info!("=== APLIKASI WGPU GLES ANDROID DIMULAI ===");
+    info!("=== APLIKASI WGPU ANDROID DIMULAI ===");
 
     let mut animating = false;
     let mut destroy = false;
@@ -174,7 +170,7 @@ fn android_main(app: AndroidApp) {
         app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
             match event {
                 PollEvent::Main(MainEvent::InitWindow { .. }) => {
-                    info!("Window Android aktif! Menyiapkan wgpu GLES surface...");
+                    info!("Window Android aktif! Menyiapkan wgpu surface...");
                     if let Some(window) = app.native_window() {
                         match pollster::block_on(WgpuState::new(window)) {
                             Ok(state) => {
