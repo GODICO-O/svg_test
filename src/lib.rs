@@ -17,10 +17,12 @@ impl WgpuState {
 
         info!("Inisialisasi wgpu instance dengan backend OpenGL ES (GL)...");
         
-        // Paksa backend ke GL (OpenGL ES) agar stabil di semua HP Android
+        // Konstruksi InstanceDescriptor secara eksplisit untuk wgpu v30
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::GL,
-            ..Default::default()
+            flags: wgpu::InstanceFlags::default(),
+            dx12_shader_compiler: wgpu::Dx12Compiler::default(),
+            gles_minor_version: wgpu::GlesMinorVersion::Automatic,
         });
 
         let win_ptr = window.ptr().as_ptr();
@@ -49,7 +51,7 @@ impl WgpuState {
                 apply_limit_buckets: false,
             })
             .await
-            .ok_or_else(|| "Gagal menemukan adapter grafis yang kompatibel dengan GL".to_string())?;
+            .map_err(|e| format!("Gagal menemukan adapter grafis yang kompatibel dengan GL: {:?}", e))?;
 
         let (device, queue) = adapter
             .request_device(
@@ -57,7 +59,8 @@ impl WgpuState {
                     label: None,
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::downlevel_defaults(),
-                    ..Default::default()
+                    memory_hints: Default::default(),
+                    experimental_features: Default::default(),
                 },
             )
             .await
@@ -131,7 +134,7 @@ impl WgpuState {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        // Warna latar belakang ungu terang supaya kelihatan jelas kalau aplikasinya jalan (bukan hitam blank)
+                        // Warna latar belakang ungu terang supaya kelihatan jelas
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: 0.5,
                             g: 0.1,
@@ -198,7 +201,6 @@ fn android_main(app: AndroidApp) {
                 }
                 PollEvent::Main(MainEvent::Destroy) => {
                     info!("Aplikasi dihancurkan.");
-                    destroy.store(true, std::sync::atomic::Ordering::Relaxed); // atau destroy = true
                     destroy = true;
                 }
                 _ => {}
