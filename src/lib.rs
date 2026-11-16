@@ -15,7 +15,13 @@ impl WgpuState {
         let width = window.width() as u32;
         let height = window.height() as u32;
 
-        let instance = wgpu::Instance::default();
+        info!("Inisialisasi wgpu instance dengan backend OpenGL ES (GL)...");
+        
+        // Paksa backend ke GL (OpenGL ES) agar stabil di semua HP Android
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::GL,
+            ..Default::default()
+        });
 
         let win_ptr = window.ptr().as_ptr();
         let raw_display = raw_window_handle::RawDisplayHandle::Android(raw_window_handle::AndroidDisplayHandle::new());
@@ -43,7 +49,7 @@ impl WgpuState {
                 apply_limit_buckets: false,
             })
             .await
-            .map_err(|e| format!("Gagal menemukan adapter grafis: {:?}", e))?;
+            .ok_or_else(|| "Gagal menemukan adapter grafis yang kompatibel dengan GL".to_string())?;
 
         let (device, queue) = adapter
             .request_device(
@@ -65,11 +71,14 @@ impl WgpuState {
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
 
+        let safe_width = if width > 0 { width } else { 800 };
+        let safe_height = if height > 0 { height } else { 600 };
+
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: if width > 0 { width } else { 1 },
-            height: if height > 0 { height } else { 1 },
+            width: safe_width,
+            height: safe_height,
             present_mode: surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
@@ -78,14 +87,14 @@ impl WgpuState {
         };
 
         surface.configure(&device, &config);
-        info!("wgpu v30 berhasil diinisialisasi! Resolusi: {}x{}", width, height);
+        info!("wgpu sukses aktif via OpenGL ES! Resolusi: {}x{}", safe_width, safe_height);
 
         Ok(Self {
             surface,
             device,
             queue,
             config,
-            size: (width, height),
+            size: (safe_width, safe_height),
             _window: window,
         })
     }
@@ -122,11 +131,11 @@ impl WgpuState {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        // Warna latar belakang ungu gelap khas Geometry Dash
+                        // Warna latar belakang ungu terang supaya kelihatan jelas kalau aplikasinya jalan (bukan hitam blank)
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.08,
-                            g: 0.08,
-                            b: 0.22,
+                            r: 0.5,
+                            g: 0.1,
+                            b: 0.8,
                             a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,
@@ -152,7 +161,7 @@ fn android_main(app: AndroidApp) {
         android_logger::Config::default().with_max_level(log::LevelFilter::Debug),
     );
 
-    info!("=== APLIKASI WGPU v30 ANDROID DIMULAI ===");
+    info!("=== APLIKASI WGPU GLES ANDROID DIMULAI ===");
 
     let mut animating = false;
     let mut destroy = false;
@@ -162,15 +171,16 @@ fn android_main(app: AndroidApp) {
         app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
             match event {
                 PollEvent::Main(MainEvent::InitWindow { .. }) => {
-                    info!("Window Android aktif! Menyiapkan wgpu surface...");
+                    info!("Window Android aktif! Menyiapkan wgpu GLES surface...");
                     if let Some(window) = app.native_window() {
                         match pollster::block_on(WgpuState::new(window)) {
                             Ok(state) => {
                                 wgpu_state = Some(state);
                                 animating = true;
+                                info!("Render loop aktif dan berjalan!");
                             }
                             Err(e) => {
-                                error!("Gagal menginisialisasi WgpuState: {}", e);
+                                error!("GAGAL MENGINISIALISASI WGPU: {}", e);
                             }
                         }
                     }
@@ -188,6 +198,7 @@ fn android_main(app: AndroidApp) {
                 }
                 PollEvent::Main(MainEvent::Destroy) => {
                     info!("Aplikasi dihancurkan.");
+                    destroy.store(true, std::sync::atomic::Ordering::Relaxed); // atau destroy = true
                     destroy = true;
                 }
                 _ => {}
@@ -196,7 +207,8 @@ fn android_main(app: AndroidApp) {
 
         if animating {
             if let Some(ref mut state) = wgpu_state {
-                if let Err(_) = state.render() {
+                if let Err(e) = state.render() {
+                    error!("Render error: {}", e);
                     state.resize(state.config.width, state.config.height);
                 }
             }
