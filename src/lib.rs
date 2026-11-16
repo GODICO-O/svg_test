@@ -1,4 +1,4 @@
-use android_activity::{AndroidApp, AndroidEvent, MainEvent};
+use android_activity::{AndroidApp, Event, MainEvent};
 use log::{error, info};
 use std::io::Read;
 
@@ -34,21 +34,21 @@ fn android_main(app: AndroidApp) {
     while !destroy {
         app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
             match event {
-                AndroidEvent::Main(MainEvent::InitWindow { .. }) => {
+                Event::Main(MainEvent::InitWindow { .. }) => {
                     info!("Window Android aktif!");
                     animating = true;
                 }
-                AndroidEvent::Main(MainEvent::TerminateWindow) => {
+                Event::Main(MainEvent::TerminateWindow { .. }) => {
                     info!("Window Android ditutup!");
                     animating = false;
                 }
-                AndroidEvent::Main(MainEvent::GainedFocus) => {
+                Event::Main(MainEvent::GainedFocus) => {
                     info!("Aplikasi fokus.");
                 }
-                AndroidEvent::Main(MainEvent::LostFocus) => {
+                Event::Main(MainEvent::LostFocus) => {
                     info!("Aplikasi kehilangan fokus.");
                 }
-                AndroidEvent::Main(MainEvent::Destroy) => {
+                Event::Main(MainEvent::Destroy) => {
                     info!("Aplikasi dihancurkan.");
                     destroy = true;
                 }
