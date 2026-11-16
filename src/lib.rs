@@ -74,7 +74,7 @@ impl WgpuState {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
-            color_space: wgpu::PredefinedColorSpace::Srgb,
+            color_space: wgpu::SurfaceColorSpace::Srgb,
         };
 
         surface.configure(&device, &config);
@@ -101,7 +101,7 @@ impl WgpuState {
 
     fn render(&mut self) -> Result<(), String> {
         let surface_texture = match self.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success { texture, .. } => texture,
+            wgpu::CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
             other => return Err(format!("Gagal mengambil surface texture: {:?}", other)),
         };
 
