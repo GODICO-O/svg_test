@@ -3,7 +3,7 @@ use log::{error, info};
 use std::ffi::c_void;
 use std::io::Read;
 
-// --- EGL & GLES 3.2 FFI Declarations (Rust 2024 unsafe extern) ---
+// --- EGL & GLES 3.2 FFI Declarations ---
 type EGLDisplay = *mut c_void;
 type EGLSurface = *mut c_void;
 type EGLContext = *mut c_void;
@@ -52,11 +52,13 @@ struct GraphicsContext {
     display: EGLDisplay,
     surface: EGLSurface,
     context: EGLContext,
+    _window: ndk::native_window::NativeWindow, // Menyimpan ownership window agar tidak ter-drop
 }
 
 impl GraphicsContext {
-    unsafe fn init(window: *mut c_void) -> Option<Self> {
+    unsafe fn init(window: ndk::native_window::NativeWindow) -> Option<Self> {
         unsafe {
+            let win_ptr = window.ptr().as_ptr() as *mut c_void;
             let display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
             if display == EGL_NO_DISPLAY {
                 error!("Gagal mendapatkan EGL display");
@@ -99,7 +101,7 @@ impl GraphicsContext {
                 return None;
             }
 
-            let surface = eglCreateWindowSurface(display, config, window, std::ptr::null());
+            let surface = eglCreateWindowSurface(display, config, win_ptr, std::ptr::null());
             if surface == EGL_NO_SURFACE {
                 error!("Gagal membuat EGL window surface");
                 eglDestroyContext(display, context);
@@ -108,11 +110,13 @@ impl GraphicsContext {
 
             if eglMakeCurrent(display, surface, surface, context) == 0 {
                 error!("Gagal melakukan eglMakeCurrent");
+                eglDestroySurface(display, surface);
+                eglDestroyContext(display, context);
                 return None;
             }
 
             info!("OpenGL ES 3.2 Context berhasil diaktifkan!");
-            Some(Self { display, surface, context })
+            Some(Self { display, surface, context, _window: window })
         }
     }
 }
@@ -142,6 +146,7 @@ fn android_main(app: AndroidApp) {
 
     info!("=== APLIKASI NATIVE RUST (PURE GLES 3.2) DIMULAI ===");
 
+    // 1. Load play.png dari Assets
     let asset_manager = app.asset_manager();
     if let Some(mut asset) = asset_manager.open(c"play.png") {
         let mut buffer = Vec::new();
@@ -169,8 +174,7 @@ fn android_main(app: AndroidApp) {
                 PollEvent::Main(MainEvent::InitWindow { .. }) => {
                     info!("Window Android aktif! Menyiapkan EGL...");
                     if let Some(window) = app.native_window() {
-                        let win_ptr = window.ptr().as_ptr() as *mut c_void;
-                        gfx = unsafe { GraphicsContext::init(win_ptr) };
+                        gfx = unsafe { GraphicsContext::init(window) };
                         if gfx.is_some() {
                             animating = true;
                         }
