@@ -1,144 +1,65 @@
-use bevy::prelude::*;
-use bevy_resvg::prelude::*;
+use android_activity::AndroidApp;
+use log::{error, info};
 
-const HALF_SIZE: f32 = 100.0;
+#[no_mangle]
+fn android_main(app: AndroidApp) {
+    // Inisialisasi logger Android
+    android_logger::init_once(
+        android_logger::Config::default().with_min_level(log::Level::Debug),
+    );
 
-#[derive(Component)]
-struct GdButton {
-    base_scale: f32,
-    target: f32,
-    scale: f32,
-    velocity: f32,
-    pressed: bool,
-}
+    info!("=== APLIKASI NATIVE RUST DIMULAI ===");
 
-#[bevy_main]
-pub fn main() {
-    App::new()
-        .insert_resource(ClearColor(Color::srgb(0.08, 0.08, 0.22)))
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "GD Vector Button".into(),
-                ..default()
-            }),
-            ..default()
-        }))
-        .add_plugins(SvgPlugin)
-        .add_systems(Startup, (setup, setup_diag))
-        .add_systems(Update, (button_touch_system, button_spring_system, diag_status))
-        .run();
-}
-
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2d);
-
-    let svg_handle: Handle<SvgAsset> = asset_server.load("btn_play.svg");
-    let base = 1.2;
-
-    commands.spawn((
-        Svg(svg_handle),
-        Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::splat(base)),
-        GdButton {
-            base_scale: base,
-            target: base,
-            scale: base,
-            velocity: 0.0,
-            pressed: false,
-        },
-    ));
-}
-
-fn button_touch_system(
-    touches: Res<Touches>,
-    windows: Query<&Window>,
-    camera_q: Query<(&Camera, &GlobalTransform)>,
-    mut btn_q: Query<(&Transform, &mut GdButton)>,
-) {
-    let Some(_window) = windows.iter().next() else { return };
-    let Some((camera, cam_tf)) = camera_q.iter().next() else { return };
-
-    for touch in touches.iter_just_pressed() {
-        let Ok(world) = camera.viewport_to_world_2d(cam_tf, touch.position()) else {
-            continue;
-        };
-        for (tf, mut btn) in btn_q.iter_mut() {
-            let d = (world - tf.translation.truncate()).abs();
-            let half = HALF_SIZE * btn.base_scale;
-            if d.x <= half && d.y <= half {
-                btn.pressed = true;
-                btn.target = btn.base_scale * 1.25;
-                info!("[GD] tombol ditekan");
+    // Contoh membaca file play.png dari folder assets Android
+    // Di native activity, file di folder assets bisa diakses via AAssetManager
+    if let Some(asset_manager) = app.asset_manager() {
+        if let Ok(mut asset) = asset_manager.open("play.png") {
+            info!("File play.png berhasil dibuka di dalam assets!");
+            // Di sini kita bisa membaca byte buffer asset dan mendekodernya pakai crate `image`
+            let mut buffer = Vec::new();
+            use std::io::Read;
+            if asset.read_to_end(&mut buffer).is_ok() {
+                match image::load_from_memory(&buffer) {
+                    Ok(img) => {
+                        info!("PNG berhasil didekode! Resolusi: {}x{}", img.width(), img.height());
+                    }
+                    Err(e) => {
+                        error!("Gagal mendecode PNG: {}", e);
+                    }
+                }
             }
+        } else {
+            error!("Gagal menemukan play.png di folder assets!");
         }
     }
 
-    let released = touches.iter_just_released().count() + touches.iter_just_canceled().count();
-    if released > 0 {
-        for (_, mut btn) in btn_q.iter_mut() {
-            if btn.pressed {
-                btn.pressed = false;
-                btn.target = btn.base_scale;
-                btn.velocity = 0.0;
-                info!("[GD] aksi dijalankan");
+    // Main event loop Android
+    let mut animating = false;
+    while !app.is_destroyed() {
+        app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
+            match event {
+                android_activity::AppEvent::InitWindow { .. } => {
+                    info!("Window Android aktif!");
+                    animating = true;
+                }
+                android_activity::AppEvent::TermWindow => {
+                    info!("Window Android ditutup!");
+                    animating = false;
+                }
+                android_activity::AppEvent::GainedFocus => {
+                    info!("Aplikasi fokus.");
+                }
+                android_activity::AppEvent::LostFocus => {
+                    info!("Aplikasi kehilangan fokus.");
+                }
+                _ => {}
             }
+        });
+
+        if animating {
+            // Render loop / logika game/UI kustom kamu di sini tanpa Bevy
         }
     }
-}
 
-fn button_spring_system(time: Res<Time>, mut btn_q: Query<(&mut Transform, &mut GdButton)>) {
-    let dt = time.delta_secs().min(1.0 / 30.0);
-    let stiffness = 420.0;
-    let damping = 15.0;
-
-    for (mut tf, mut btn) in btn_q.iter_mut() {
-        let accel = stiffness * (btn.target - btn.scale) - damping * btn.velocity;
-        btn.velocity += accel * dt;
-        btn.scale += btn.velocity * dt;
-        tf.scale = Vec3::splat(btn.scale);
-    }
-}
-
-#[derive(Component)]
-struct StatusText;
-
-fn setup_diag(mut commands: Commands) {
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(0.9, 0.2, 0.2),
-            custom_size: Some(Vec2::splat(60.0)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, -220.0, 1.0),
-    ));
-    
-    commands.spawn((
-        Text::new("svg: menunggu..."),
-        TextFont {
-            font_size: FontSize::Px(26.0),
-            ..default()
-        },
-        TextColor(Color::WHITE),
-        Transform::from_xyz(0.0, 220.0, 1.0),
-        StatusText,
-    ));
-}
-
-fn diag_status(
-    asset_server: Res<AssetServer>,
-    svgs: Query<&Svg>,
-    mut text: Query<&mut Text, With<StatusText>>,
-) {
-    let Some(svg) = svgs.iter().next() else { return; };
-    let Some(mut t) = text.iter_mut().next() else { return; };
-
-    let raw = match asset_server.load_state(&svg.0) {
-        bevy::asset::LoadState::NotLoaded => "svg: not loaded".to_string(),
-        bevy::asset::LoadState::Loading => "svg: loading".to_string(),
-        bevy::asset::LoadState::Loaded => "svg: loaded OK".to_string(),
-        bevy::asset::LoadState::Failed(e) => format!("svg: FAILED {}", e),
-    };
-    
-    if t.0 != raw {
-        t.0 = raw;
-    }
+    info!("=== APLIKASI KELUAR ===");
 }
