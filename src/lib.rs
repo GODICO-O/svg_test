@@ -11,35 +11,26 @@ struct WgpuState {
 }
 
 impl WgpuState {
-    async fn new(window: ndk::native_window::NativeWindow) -> Option<Self> {
+    async fn new(window: ndk::native_window::NativeWindow) -> Result<Self, String> {
         let width = window.width() as u32;
         let height = window.height() as u32;
 
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::PRIMARY,
-            ..Default::default()
-        });
+        // wgpu v30 Instance initialization
+        let instance = wgpu::Instance::default();
 
-        // Membuat surface secara aman dari NDK NativeWindow menggunakan target unsafe raw handle
-        let win_ptr = window.ptr().as_ptr();
-        let p_window = raw_window_handle::AndroidDisplayHandle::new();
-        let p_display = raw_window_handle::AndroidWindowHandle::new(
-            std::num::NonZeroU32::new(win_ptr as u32).unwrap()
-        );
-
-        // Menggunakan unsafe raw handle creation untuk NDK Android
-        let surface_target = unsafe {
-            wgpu::SurfaceTargetUnsafe::from_window(&window).ok()?
+        // Membuat surface secara aman langsung dari rwh (Raw Window Handle) NativeWindow
+        let surface = unsafe {
+            instance.create_surface(&window).map_err(|e| format!("Gagal membuat surface: {:?}", e))?
         };
-        let surface = unsafe { instance.create_surface_unsafe(surface_target).ok()? };
 
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::Default,
+                power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             })
-            .await?;
+            .await
+            .ok_or_else(|| "Gagal menemukan adapter grafis yang kompatibel".to_string())?;
 
         let (device, queue) = adapter
             .request_device(
@@ -52,7 +43,7 @@ impl WgpuState {
                 None,
             )
             .await
-.ok()?;
+            .map_err(|e| format!("Gagal meminta device wgpu: {:?}", e))?;
 
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps
@@ -76,7 +67,7 @@ impl WgpuState {
         surface.configure(&device, &config);
         info!("wgpu v30 berhasil diinisialisasi! Resolusi: {}x{}", width, height);
 
-        Some(Self {
+        Ok(Self {
             surface,
             device,
             queue,
@@ -95,8 +86,12 @@ impl WgpuState {
         }
     }
 
-    fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        let output = self.surface.get_current_texture()?;
+    fn render(&mut self) -> Result<(), String> {
+        let output = match self.surface.get_current_texture() {
+            Ok(tex) => tex,
+            Err(e) => return Err(format!("Surface error: {:?}", e)),
+        };
+
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -114,7 +109,7 @@ impl WgpuState {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        // Warna latar belakang ungu gelap khas GD
+                        // Warna latar belakang ungu gelap khas Geometry Dash
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: 0.08,
                             g: 0.08,
@@ -155,12 +150,14 @@ fn android_main(app: AndroidApp) {
                 PollEvent::Main(MainEvent::InitWindow { .. }) => {
                     info!("Window Android aktif! Menyiapkan wgpu surface...");
                     if let Some(window) = app.native_window() {
-                        let state = pollster::block_on(WgpuState::new(window));
-                        if state.is_some() {
-                            wgpu_state = state;
-                            animating = true;
-                        } else {
-                            error!("Gagal menginisialisasi WgpuState!");
+                        match pollster::block_on(WgpuState::new(window)) {
+                            Ok(state) => {
+                                wgpu_state = Some(state);
+                                animating = true;
+                            }
+                            Err(e) => {
+                                error!("Gagal menginisialisasi WgpuState: {}", e);
+                            }
                         }
                     }
                 }
@@ -185,18 +182,8 @@ fn android_main(app: AndroidApp) {
 
         if animating {
             if let Some(ref mut state) = wgpu_state {
-                match state.render() {
-                    Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-                        state.resize(state.config.width, state.config.height);
-                    }
-                    Err(wgpu::SurfaceError::OutOfMemory) => {
-                        error!("Wgpu out of memory!");
-                        destroy = true;
-                    }
-                    Err(e) => {
-                        error!("Surface error: {:?}", e);
-                    }
+                if let Err(_) = state.render() {
+                    state.resize(state.config.width, state.config.height);
                 }
             }
         }
