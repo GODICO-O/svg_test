@@ -32,7 +32,7 @@ pub fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2d);
+    commands.spawn(Camera2dBundle::default());
 
     let svg_handle: Handle<Svg> = asset_server.load("btn_play.svg");
     let base = 1.2;
@@ -57,8 +57,8 @@ fn button_touch_system(
     camera_q: Query<(&Camera, &GlobalTransform)>,
     mut btn_q: Query<(&Transform, &mut GdButton)>,
 ) {
-    let Ok(_window) = windows.get_single() else { return };
-    let Ok((camera, cam_tf)) = camera_q.get_single() else { return };
+    let Some(_window) = windows.iter().next() else { return };
+    let Some((camera, cam_tf)) = camera_q.iter().next() else { return };
 
     for touch in touches.iter_just_pressed() {
         let Ok(world) = camera.viewport_to_world_2d(cam_tf, touch.position()) else {
@@ -106,16 +106,30 @@ struct StatusText;
 
 fn setup_diag(mut commands: Commands) {
     commands.spawn((
-        Sprite::from_color(Color::srgb(0.9, 0.2, 0.2), Vec2::splat(60.0)),
-        Transform::from_xyz(0.0, -220.0, 1.0),
-    ));
-    commands.spawn((
-        Text2d::new("svg: menunggu..."),
-        TextFont {
-            font_size: 26.0,
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgb(0.9, 0.2, 0.2),
+                custom_size: Some(Vec2::splat(60.0)),
+                ..default()
+            },
+            transform: Transform::from_xyz(0.0, -220.0, 1.0),
             ..default()
         },
-        Transform::from_xyz(0.0, 220.0, 1.0),
+    ));
+    
+    commands.spawn((
+        Text2dBundle {
+            text: Text::from_section(
+                "svg: menunggu...",
+                TextStyle {
+                    font_size: 26.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ),
+            transform: Transform::from_xyz(0.0, 220.0, 1.0),
+            ..default()
+        },
         StatusText,
     ));
 }
@@ -123,10 +137,10 @@ fn setup_diag(mut commands: Commands) {
 fn diag_status(
     asset_server: Res<AssetServer>,
     svgs: Query<&Svg2d>,
-    mut text: Query<&mut Text2d, With<StatusText>>,
+    mut text: Query<&mut Text, With<StatusText>>,
 ) {
     let Some(svg) = svgs.iter().next() else { return; };
-    let Ok(mut t) = text.get_single_mut() else { return; };
+    let Some(mut t) = text.iter_mut().next() else { return; };
 
     let raw = match asset_server.load_state(&svg.0) {
         LoadState::NotLoaded => "svg: not loaded".to_string(),
@@ -135,7 +149,7 @@ fn diag_status(
         LoadState::Failed(e) => format!("svg: FAILED {}", e),
     };
     
-    if t.0 != raw {
-        t.0 = raw;
+    if t.sections[0].value != raw {
+        t.sections[0].value = raw;
     }
 }
