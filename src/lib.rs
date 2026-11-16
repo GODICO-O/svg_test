@@ -1,55 +1,53 @@
-use android_activity::AndroidApp;
+use android_activity::{AndroidApp, InputEvent};
 use log::{error, info};
+use std::io::Read;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn android_main(app: AndroidApp) {
-    // Inisialisasi logger Android
+    // Inisialisasi logger Android dengan max_level
     android_logger::init_once(
-        android_logger::Config::default().with_min_level(log::Level::Debug),
+        android_logger::Config::default().with_max_level(log::Level::Debug),
     );
 
     info!("=== APLIKASI NATIVE RUST DIMULAI ===");
 
-    // Contoh membaca file play.png dari folder assets Android
-    // Di native activity, file di folder assets bisa diakses via AAssetManager
-    if let Some(asset_manager) = app.asset_manager() {
-        if let Ok(mut asset) = asset_manager.open("play.png") {
-            info!("File play.png berhasil dibuka di dalam assets!");
-            // Di sini kita bisa membaca byte buffer asset dan mendekodernya pakai crate `image`
-            let mut buffer = Vec::new();
-            use std::io::Read;
-            if asset.read_to_end(&mut buffer).is_ok() {
-                match image::load_from_memory(&buffer) {
-                    Ok(img) => {
-                        info!("PNG berhasil didekode! Resolusi: {}x{}", img.width(), img.height());
-                    }
-                    Err(e) => {
-                        error!("Gagal mendecode PNG: {}", e);
-                    }
+    // app.asset_manager() langsung mengembalikan AssetManager (bukan Option)
+    let asset_manager = app.asset_manager();
+    if let Ok(mut asset) = asset_manager.open("play.png") {
+        info!("File play.png berhasil dibuka di dalam assets!");
+        let mut buffer = Vec::new();
+        if asset.read_to_end(&mut buffer).is_ok() {
+            match image::load_from_memory(&buffer) {
+                Ok(img) => {
+                    info!("PNG berhasil didekode! Resolusi: {}x{}", img.width(), img.height());
+                }
+                Err(e) => {
+                    error!("Gagal mendecode PNG: {}", e);
                 }
             }
-        } else {
-            error!("Gagal menemukan play.png di folder assets!");
         }
+    } else {
+        error!("Gagal menemukan play.png di folder assets!");
     }
 
-    // Main event loop Android
     let mut animating = false;
+
+    // Main event loop Android 0.6
     while !app.is_destroyed() {
         app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
             match event {
-                android_activity::AppEvent::InitWindow { .. } => {
+                android_activity::Event::InitWindow { .. } => {
                     info!("Window Android aktif!");
                     animating = true;
                 }
-                android_activity::AppEvent::TermWindow => {
+                android_activity::Event::TermWindow => {
                     info!("Window Android ditutup!");
                     animating = false;
                 }
-                android_activity::AppEvent::GainedFocus => {
+                android_activity::Event::GainedFocus => {
                     info!("Aplikasi fokus.");
                 }
-                android_activity::AppEvent::LostFocus => {
+                android_activity::Event::LostFocus => {
                     info!("Aplikasi kehilangan fokus.");
                 }
                 _ => {}
@@ -57,7 +55,7 @@ fn android_main(app: AndroidApp) {
         });
 
         if animating {
-            // Render loop / logika game/UI kustom kamu di sini tanpa Bevy
+            // Render loop / logika game/UI kustom kamu di sini
         }
     }
 

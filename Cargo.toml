@@ -14,11 +14,10 @@ log = "0.4"
 android_logger = "0.15"
 libc = "0.2"
 jni = "=0.21.1"
-bevy = "0.20"
-bevy_resvg = "3.0"
+image = "0.25"
 
 [package.metadata.android]
-package = "com.rustdev.svgtest"
+package = "com.rustdev.gdnative"
 lib_name = "rust_test_app"
 build_targets = ["aarch64-linux-android"]
 assets = "assets"
@@ -33,7 +32,7 @@ name = "android.hardware.opengles.aep"
 required = false
 
 [package.metadata.android.application]
-label = "SVG Test App"
+label = "GD Native UI"
 allow_backup = false
 has_code = false
 theme = "@android:style/Theme.NoTitleBar.Fullscreen"
@@ -53,10 +52,7 @@ path = "debug.keystore"
 keystore_password = "android"
 
 [profile.release]
-opt-level = "z"
-lto = "fat"
-codegen-units = 1
+opt-level = 3
 panic = "abort"
 strip = true
 debug = false
-incremental = false
