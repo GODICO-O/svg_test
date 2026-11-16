@@ -117,7 +117,7 @@ fn setup_diag(mut commands: Commands) {
     commands.spawn((
         Text::new("svg: menunggu..."),
         TextFont {
-            font_size: 26.0,
+            font_size: FontSize::Px(26.0),
             ..default()
         },
         TextColor(Color::WHITE),
