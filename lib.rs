@@ -122,7 +122,7 @@ fn setup_diag(mut commands: Commands) {
             text: Text::from_section(
                 "svg: menunggu...",
                 TextStyle {
-                    font_size: 26.0,
+                    font_size: FontSize::Px(26.0),
                     color: Color::WHITE,
                     ..default()
                 },
