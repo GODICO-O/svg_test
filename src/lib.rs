@@ -53,7 +53,7 @@ impl WgpuState {
                     label: None,
                     memory_hints: Default::default(),
                     experimental_features: Default::default(),
-                    trace: wgpu::DeviceTrace::default(),
+                    trace: None,
                 },
             )
             .await
@@ -76,7 +76,6 @@ impl WgpuState {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
-            color_space: wgpu::ColorSpace::Srgb,
         };
 
         surface.configure(&device, &config);
@@ -102,10 +101,8 @@ impl WgpuState {
     }
 
     fn render(&mut self) -> Result<(), String> {
-        let output = match self.surface.get_current_texture() {
-            Ok(surface_texture) => surface_texture,
-            Err(e) => return Err(format!("Surface error: {:?}", e)),
-        };
+        let output = self.surface.get_current_texture()
+            .map_err(|e| format!("Surface error: {:?}", e))?;
 
         let view = output
             .texture
