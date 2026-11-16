@@ -74,7 +74,6 @@ impl WgpuState {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
-            color_space: wgpu::SurfaceColorSpace::Srgb,
         };
 
         surface.configure(&device, &config);
@@ -141,7 +140,7 @@ impl WgpuState {
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
-        surface_texture.present();
+        // Di wgpu v30, surface_texture otomatis dipresentasikan saat di-drop di akhir fungsi ini
 
         Ok(())
     }
