@@ -17,7 +17,6 @@ impl WgpuState {
 
         let instance = wgpu::Instance::default();
 
-        // Membuat surface secara aman menggunakan raw handle Android Ndk
         let win_ptr = window.ptr().as_ptr();
         let raw_display = raw_window_handle::RawDisplayHandle::Android(raw_window_handle::AndroidDisplayHandle::new());
         let raw_window = raw_window_handle::RawWindowHandle::AndroidNdk(
@@ -27,7 +26,7 @@ impl WgpuState {
         );
 
         let unsafe_target = wgpu::SurfaceTargetUnsafe::RawHandle {
-            raw_display_handle: raw_display,
+            raw_display_handle: Some(raw_display),
             raw_window_handle: raw_window,
         };
 
@@ -54,9 +53,7 @@ impl WgpuState {
                     label: None,
                     memory_hints: Default::default(),
                     experimental_features: Default::default(),
-                    trace: None,
                 },
-                None,
             )
             .await
             .map_err(|e| format!("Gagal meminta device wgpu: {:?}", e))?;
@@ -78,7 +75,6 @@ impl WgpuState {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
-            color_space: wgpu::ColorSpace::Srgb,
         };
 
         surface.configure(&device, &config);
@@ -106,7 +102,6 @@ impl WgpuState {
     fn render(&mut self) -> Result<(), String> {
         let output = self.surface.get_current_texture();
         let view = output
-            .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         let mut encoder = self
@@ -141,7 +136,7 @@ impl WgpuState {
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
+        self.surface.present();
 
         Ok(())
     }
