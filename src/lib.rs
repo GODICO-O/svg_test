@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::pbr::PbrPlugin;
 use bevy_resvg::prelude::*;
 
 const HALF_SIZE: f32 = 100.0;
@@ -17,17 +16,13 @@ struct GdButton {
 pub fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.08, 0.08, 0.22)))
-        .add_plugins(
-            DefaultPlugins
-                .disable::<PbrPlugin>()
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "GD Vector Button".into(),
-                        ..default()
-                    }),
-                    ..default()
-                })
-        )
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "GD Vector Button".into(),
+                ..default()
+            }),
+            ..default()
+        }))
         .add_plugins(SvgPlugin)
         .add_systems(Startup, (setup, setup_diag))
         .add_systems(Update, (button_touch_system, button_spring_system, diag_status))
@@ -37,7 +32,7 @@ pub fn main() {
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
 
-    let svg_handle: Handle<Svg> = asset_server.load("btn_play.svg");
+    let svg_handle: Handle<SvgAsset> = asset_server.load("btn_play.svg");
     let base = 1.2;
 
     commands.spawn((
@@ -119,7 +114,7 @@ fn setup_diag(mut commands: Commands) {
     commands.spawn((
         Text::new("svg: menunggu..."),
         TextFont {
-            font_size: 26.0,
+            font_size: FontSize::Px(26.0),
             ..default()
         },
         TextColor(Color::WHITE),
@@ -141,7 +136,6 @@ fn diag_status(
         bevy::asset::LoadState::Loading => "svg: loading".to_string(),
         bevy::asset::LoadState::Loaded => "svg: loaded OK".to_string(),
         bevy::asset::LoadState::Failed(e) => format!("svg: FAILED {}", e),
-        _ => "svg: unknown".to_string(),
     };
     
     if t.0 != raw {
