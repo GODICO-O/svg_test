@@ -28,7 +28,7 @@ pub fn main() {
                     ..default()
                 })
         )
-        .add_plugins(ResvgPlugin)
+        .add_plugins(SvgPlugin)
         .add_systems(Startup, (setup, setup_diag))
         .add_systems(Update, (button_touch_system, button_spring_system, diag_status))
         .run();
@@ -37,15 +37,12 @@ pub fn main() {
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
 
-    let svg_handle: Handle<ResvgImage> = asset_server.load("btn_play.svg");
+    let svg_handle: Handle<Svg> = asset_server.load("btn_play.svg");
     let base = 1.2;
 
     commands.spawn((
-        ResvgBundle {
-            image: ResvgImage(svg_handle),
-            transform: Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::splat(base)),
-            ..default()
-        },
+        Svg(svg_handle),
+        Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3::splat(base)),
         GdButton {
             base_scale: base,
             target: base,
@@ -133,7 +130,7 @@ fn setup_diag(mut commands: Commands) {
 
 fn diag_status(
     asset_server: Res<AssetServer>,
-    svgs: Query<&ResvgImage>,
+    svgs: Query<&Svg>,
     mut text: Query<&mut Text, With<StatusText>>,
 ) {
     let Some(svg) = svgs.iter().next() else { return; };
