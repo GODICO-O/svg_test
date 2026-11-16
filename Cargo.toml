@@ -17,6 +17,7 @@ jni = "0.22"
 wgpu = "30.0.2"
 pollster = "0.3"
 raw-window-handle = "0.6"
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [package.metadata.android]
 package = "com.rustdev.gdnative"
