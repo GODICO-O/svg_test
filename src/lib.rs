@@ -48,12 +48,10 @@ impl WgpuState {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
+                    label: None,
                     required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::downlevel_defaults(),
-                    label: None,
-                    memory_hints: Default::default(),
-                    experimental_features: Default::default(),
-                    trace: None,
+                    ..Default::default()
                 },
             )
             .await
@@ -76,6 +74,7 @@ impl WgpuState {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
+            color_space: wgpu::PredefinedColorSpace::Srgb,
         };
 
         surface.configure(&device, &config);
@@ -101,10 +100,12 @@ impl WgpuState {
     }
 
     fn render(&mut self) -> Result<(), String> {
-        let output = self.surface.get_current_texture()
-            .map_err(|e| format!("Surface error: {:?}", e))?;
+        let surface_texture = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success { texture, .. } => texture,
+            other => return Err(format!("Gagal mengambil surface texture: {:?}", other)),
+        };
 
-        let view = output
+        let view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -140,7 +141,7 @@ impl WgpuState {
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
+        surface_texture.present();
 
         Ok(())
     }
