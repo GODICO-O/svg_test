@@ -15,12 +15,25 @@ impl WgpuState {
         let width = window.width() as u32;
         let height = window.height() as u32;
 
-        // wgpu v30 Instance initialization
         let instance = wgpu::Instance::default();
 
-        // Membuat surface secara aman langsung dari rwh (Raw Window Handle) NativeWindow
+        // Membuat surface secara aman menggunakan raw handle Android Ndk
+        let win_ptr = window.ptr().as_ptr();
+        let raw_display = raw_window_handle::RawDisplayHandle::Android(raw_window_handle::AndroidDisplayHandle::new());
+        let raw_window = raw_window_handle::RawWindowHandle::AndroidNdk(
+            raw_window_handle::AndroidNdkWindowHandle::new(
+                std::ptr::NonNull::new(win_ptr as *mut std::ffi::c_void).unwrap()
+            )
+        );
+
+        let unsafe_target = wgpu::SurfaceTargetUnsafe::RawHandle {
+            raw_display_handle: raw_display,
+            raw_window_handle: raw_window,
+        };
+
         let surface = unsafe {
-            instance.create_surface(&window).map_err(|e| format!("Gagal membuat surface: {:?}", e))?
+            instance.create_surface_unsafe(unsafe_target)
+                .map_err(|e| format!("Gagal membuat surface: {:?}", e))?
         };
 
         let adapter = instance
@@ -28,9 +41,10 @@ impl WgpuState {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
-            .ok_or_else(|| "Gagal menemukan adapter grafis yang kompatibel".to_string())?;
+            .map_err(|e| format!("Gagal menemukan adapter grafis: {:?}", e))?;
 
         let (device, queue) = adapter
             .request_device(
@@ -39,6 +53,8 @@ impl WgpuState {
                     required_limits: wgpu::Limits::downlevel_defaults(),
                     label: None,
                     memory_hints: Default::default(),
+                    experimental_features: Default::default(),
+                    trace: None,
                 },
                 None,
             )
@@ -62,6 +78,7 @@ impl WgpuState {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
+            color_space: wgpu::ColorSpace::Srgb,
         };
 
         surface.configure(&device, &config);
@@ -87,11 +104,7 @@ impl WgpuState {
     }
 
     fn render(&mut self) -> Result<(), String> {
-        let output = match self.surface.get_current_texture() {
-            Ok(tex) => tex,
-            Err(e) => return Err(format!("Surface error: {:?}", e)),
-        };
-
+        let output = self.surface.get_current_texture();
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -118,10 +131,12 @@ impl WgpuState {
                         }),
                         store: wgpu::StoreOp::Store,
                     },
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
         }
 
