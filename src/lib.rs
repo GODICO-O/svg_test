@@ -27,7 +27,7 @@ pub fn main() {
         }))
         .add_plugins(SvgPlugin)
         .add_systems(Startup, (setup, setup_diag))
-        .add_systems(Update, (button_touch_system, button_spring_system))
+        .add_systems(Update, (button_touch_system, button_spring_system, diag_status))
         .run();
 }
 
@@ -57,8 +57,8 @@ fn button_touch_system(
     camera_q: Query<(&Camera, &GlobalTransform)>,
     mut btn_q: Query<(&Transform, &mut GdButton)>,
 ) {
-    let Ok(_window) = windows.single() else { return };
-    let Ok((camera, cam_tf)) = camera_q.single() else { return };
+    let Ok(_window) = windows.get_single() else { return };
+    let Ok((camera, cam_tf)) = camera_q.get_single() else { return };
 
     for touch in touches.iter_just_pressed() {
         let Ok(world) = camera.viewport_to_world_2d(cam_tf, touch.position()) else {
@@ -81,7 +81,6 @@ fn button_touch_system(
             if btn.pressed {
                 btn.pressed = false;
                 btn.target = btn.base_scale;
-                // dorongan ke atas -> overshoot lalu memantul ala GD
                 btn.velocity = 0.0;
                 info!("[GD] aksi dijalankan");
             }
@@ -92,7 +91,7 @@ fn button_touch_system(
 fn button_spring_system(time: Res<Time>, mut btn_q: Query<(&mut Transform, &mut GdButton)>) {
     let dt = time.delta_secs().min(1.0 / 30.0);
     let stiffness = 420.0;
-    let damping = 15.0; // rasio redaman ~0.37 -> memantul
+    let damping = 15.0;
 
     for (mut tf, mut btn) in btn_q.iter_mut() {
         let accel = stiffness * (btn.target - btn.scale) - damping * btn.velocity;
@@ -113,7 +112,7 @@ fn setup_diag(mut commands: Commands) {
     commands.spawn((
         Text2d::new("svg: menunggu..."),
         TextFont {
-            font_size: FontSize::Px(26.0),
+            font_size: 26.0,
             ..default()
         },
         Transform::from_xyz(0.0, 220.0, 1.0),
@@ -126,24 +125,17 @@ fn diag_status(
     svgs: Query<&Svg2d>,
     mut text: Query<&mut Text2d, With<StatusText>>,
 ) {
-    let (Some(svg), Ok(mut t)) = (svgs.iter().next(), text.single_mut()) else {
-        return;
-    };
+    let Some(svg) = svgs.iter().next() else { return; };
+    let Ok(mut t) = text.get_single_mut() else { return; };
+
     let raw = match asset_server.load_state(&svg.0) {
         LoadState::NotLoaded => "svg: not loaded".to_string(),
         LoadState::Loading => "svg: loading".to_string(),
         LoadState::Loaded => "svg: loaded OK".to_string(),
         LoadState::Failed(e) => format!("svg: FAILED {}", e),
     };
-    let msg: String = raw
-        .chars()
-        .take(200)
-        .collect::<Vec<_>>()
-        .chunks(28)
-        .map(|c| c.iter().collect::<String>())
-        .collect::<Vec<_>>()
-        .join("\n");
-    if t.0 != msg {
-        t.0 = msg;
+    
+    if t.0 != raw {
+        t.0 = raw;
     }
 }
