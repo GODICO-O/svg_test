@@ -2,11 +2,9 @@ use android_activity::{AndroidApp, MainEvent, PollEvent};
 use log::{error, info};
 use std::borrow::Cow;
 
-// ---------- shader ----------
 const SHADER: &str = r#"
 @vertex
 fn vs_main(@builtin(vertex_index) idx: u32) -> @builtin(position) vec4<f32> {
-    // Fullscreen triangle
     var pos = array<vec2<f32>, 3>(
         vec2<f32>(-1.0, -3.0),
         vec2<f32>(-1.0,  1.0),
@@ -20,7 +18,6 @@ fn vs_main(@builtin(vertex_index) idx: u32) -> @builtin(position) vec4<f32> {
 
 @fragment
 fn fs_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
-    // Approximate fullscreen UV, flip Y
     let uv = vec2<f32>(frag_coord.x / 1080.0, 1.0 - frag_coord.y / 1920.0);
     return textureSample(tex, samp, uv);
 }
@@ -109,7 +106,6 @@ impl WgpuState {
         };
         surface.configure(&device, &config);
 
-        // ---------- 解码 PNG ----------
         let img = image::load_from_memory(png_bytes)
             .map_err(|e| format!("decode png: {}", e))?
             .to_rgba8();
@@ -203,12 +199,15 @@ impl WgpuState {
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(SHADER)),
         });
 
+        // wgpu 30.0: bind_group_layouts pakai Option<&BindGroupLayout>,
+        // push_constant_ranges diganti immediate_size
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("pipeline layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_group_layout)],
+            immediate_size: 0,
         });
 
+        // wgpu 30.0: multiview -> multiview_mask
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pipeline"),
             layout: Some(&pipeline_layout),
@@ -231,7 +230,7 @@ impl WgpuState {
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -286,7 +285,6 @@ impl WgpuState {
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
-        // wgpu 30.0: present moved to queue
         self.queue.present(output);
         Ok(())
     }
@@ -299,7 +297,6 @@ fn android_main(app: AndroidApp) {
     );
     info!("=== START ===");
 
-    // Baca PNG dari assets (dipasang oleh cargo-apk ke /data/app/.../assets)
     let png_bytes = std::fs::read("assets/play.png").unwrap_or_else(|e| {
         error!("read play.png: {}", e);
         Vec::new()
@@ -338,7 +335,6 @@ fn android_main(app: AndroidApp) {
         if let Some(s) = state.as_mut() {
             if let Err(e) = s.render() {
                 error!("render: {}", e);
-                // Reconfigure after transient error
                 s.surface.configure(&s.device, &s.config);
             }
         }
