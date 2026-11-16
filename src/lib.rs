@@ -1,19 +1,19 @@
-use android_activity::{AndroidApp, InputEvent};
+use android_activity::{AndroidApp, Event, MainEvent};
 use log::{error, info};
 use std::io::Read;
 
 #[unsafe(no_mangle)]
 fn android_main(app: AndroidApp) {
-    // Inisialisasi logger Android dengan max_level
+    // Inisialisasi logger Android dengan LevelFilter
     android_logger::init_once(
-        android_logger::Config::default().with_max_level(log::Level::Debug),
+        android_logger::Config::default().with_max_level(log::LevelFilter::Debug),
     );
 
     info!("=== APLIKASI NATIVE RUST DIMULAI ===");
 
-    // app.asset_manager() langsung mengembalikan AssetManager (bukan Option)
+    // Membuka asset menggunakan C-string literal c"..."
     let asset_manager = app.asset_manager();
-    if let Ok(mut asset) = asset_manager.open("play.png") {
+    if let Some(mut asset) = asset_manager.open(c"play.png") {
         info!("File play.png berhasil dibuka di dalam assets!");
         let mut buffer = Vec::new();
         if asset.read_to_end(&mut buffer).is_ok() {
@@ -31,24 +31,29 @@ fn android_main(app: AndroidApp) {
     }
 
     let mut animating = false;
+    let mut destroy = false;
 
     // Main event loop Android 0.6
-    while !app.is_destroyed() {
+    while !destroy {
         app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
             match event {
-                android_activity::Event::InitWindow { .. } => {
+                Event::Main(MainEvent::InitWindow { .. }) => {
                     info!("Window Android aktif!");
                     animating = true;
                 }
-                android_activity::Event::TermWindow => {
+                Event::Main(MainEvent::TermWindow) => {
                     info!("Window Android ditutup!");
                     animating = false;
                 }
-                android_activity::Event::GainedFocus => {
+                Event::Main(MainEvent::GainedFocus) => {
                     info!("Aplikasi fokus.");
                 }
-                android_activity::Event::LostFocus => {
+                Event::Main(MainEvent::LostFocus) => {
                     info!("Aplikasi kehilangan fokus.");
+                }
+                Event::Main(MainEvent::Destroy) => {
+                    info!("Aplikasi dihancurkan.");
+                    destroy = true;
                 }
                 _ => {}
             }
