@@ -32,7 +32,7 @@ pub fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 
     let svg_handle: Handle<Svg> = asset_server.load("btn_play.svg");
     let base = 1.2;
@@ -106,30 +106,22 @@ struct StatusText;
 
 fn setup_diag(mut commands: Commands) {
     commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::srgb(0.9, 0.2, 0.2),
-                custom_size: Some(Vec2::splat(60.0)),
-                ..default()
-            },
-            transform: Transform::from_xyz(0.0, -220.0, 1.0),
+        Sprite {
+            color: Color::srgb(0.9, 0.2, 0.2),
+            custom_size: Some(Vec2::splat(60.0)),
             ..default()
         },
+        Transform::from_xyz(0.0, -220.0, 1.0),
     ));
     
     commands.spawn((
-        Text2dBundle {
-            text: Text::from_section(
-                "svg: menunggu...",
-                TextStyle {
-                    font_size: 26.0,
-                    color: Color::WHITE,
-                    ..default()
-                },
-            ),
-            transform: Transform::from_xyz(0.0, 220.0, 1.0),
+        Text::new("svg: menunggu..."),
+        TextFont {
+            font_size: 26.0,
             ..default()
         },
+        TextColor(Color::WHITE),
+        Transform::from_xyz(0.0, 220.0, 1.0),
         StatusText,
     ));
 }
@@ -149,7 +141,7 @@ fn diag_status(
         LoadState::Failed(e) => format!("svg: FAILED {}", e),
     };
     
-    if t.sections[0].value != raw {
-        t.sections[0].value = raw;
+    if t.0 != raw {
+        t.0 = raw;
     }
 }
