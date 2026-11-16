@@ -1,8 +1,9 @@
-name: Build APK
+name: Build SVG Test APK
 
 on:
-  push:
   workflow_dispatch:
+  push:
+    branches: [ "main", "master" ]
 
 jobs:
   build:
@@ -10,38 +11,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
 
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk
-
-      - name: Build Rust (.so)
-        run: cargo ndk -t arm64-v8a -P 26 -o android/app/src/main/jniLibs build --release
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-java@v4
         with:
-          gradle-version: '9.8.0'
+          distribution: temurin
+          java-version: "17"
 
-      - name: Build APK
-        working-directory: android
-        run: gradle assembleRelease
+      - name: Install Android NDK + platforms
+        run: |
+          SdkMgr="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SdkMgr" --licenses > /dev/null || true
+          "$SdkMgr" --install "platforms;android-30" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
 
-      - uses: actions/upload-artifact@v4
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-apk
+        run: cargo install cargo-apk
+
+      - name: Generate temporary debug keystore
+        run: |
+          rm -f debug.keystore
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build Optimized Release APK with cargo-apk
+        run: cargo apk build --profile release
+        env:
+          RUSTFLAGS: '-C link-arg=-Wl,-z,max-page-size=16384'
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: rusttest-apk
-          path: android/app/build/outputs/apk/release/*.apk
-
-      - name: Cek isi APK
-        run: unzip -l android/app/build/outputs/apk/release/*.apk | grep -E "assets/|\.so"
-
-      - name: Ukuran APK
-        run: ls -lh android/app/build/outputs/apk/release/*.apk
+          name: svg-test-optimized-release-apk
+          path: "**/target/**/*.apk"
