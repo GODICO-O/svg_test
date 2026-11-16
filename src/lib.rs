@@ -3,7 +3,7 @@ use log::{error, info};
 use std::ffi::c_void;
 use std::io::Read;
 
-// --- EGL & GLES 3.2 FFI Declarations ---
+// --- EGL & GLES 3.2 FFI Declarations (Rust 2024 Unsafe Extern) ---
 type EGLDisplay = *mut c_void;
 type EGLSurface = *mut c_void;
 type EGLContext = *mut c_void;
@@ -29,6 +29,12 @@ const EGL_NONE: EGLInt = 0x3038;
 const EGL_CONTEXT_CLIENT_VERSION: EGLInt = 0x3098;
 
 const GL_COLOR_BUFFER_BIT: u32 = 0x00004000;
+const GL_TEXTURE_2D: u32 = 0x0DE1;
+const GL_RGBA: u32 = 0x1908;
+const GL_UNSIGNED_BYTE: u32 = 0x1401;
+const GL_TEXTURE_MIN_FILTER: i32 = 0x2801;
+const GL_TEXTURE_MAG_FILTER: i32 = 0x2800;
+const GL_LINEAR: i32 = 0x2601;
 
 unsafe extern "C" {
     fn eglGetDisplay(display_id: *mut c_void) -> EGLDisplay;
@@ -46,17 +52,22 @@ unsafe extern "C" {
 unsafe extern "C" {
     fn glClearColor(red: f32, green: f32, blue: f32, alpha: f32);
     fn glClear(mask: u32);
+    fn glGenTextures(n: i32, textures: *mut u32);
+    fn glBindTexture(target: u32, texture: u32);
+    fn glTexImage2D(target: u32, level: i32, internalformat: i32, width: i32, height: i32, border: i32, format: u32, type_: u32, pixels: *const c_void);
+    fn glTexParameteri(target: u32, pname: i32, param: i32);
 }
 
 struct GraphicsContext {
     display: EGLDisplay,
     surface: EGLSurface,
     context: EGLContext,
-    _window: ndk::native_window::NativeWindow, // Menyimpan ownership window agar tidak ter-drop
+    _window: ndk::native_window::NativeWindow, // Menjaga ownership window agar aman dari crash RAII
+    texture_id: u32,
 }
 
 impl GraphicsContext {
-    unsafe fn init(window: ndk::native_window::NativeWindow) -> Option<Self> {
+    unsafe fn init(window: ndk::native_window::NativeWindow, png_bytes: &[u8]) -> Option<Self> {
         unsafe {
             let win_ptr = window.ptr().as_ptr() as *mut c_void;
             let display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -87,7 +98,7 @@ impl GraphicsContext {
             let mut config: EGLConfig = std::ptr::null_mut();
             let mut num_configs = 0;
             if eglChooseConfig(display, attribs.as_ptr(), &mut config, 1, &mut num_configs) == 0 || num_configs == 0 {
-                error!("Gagal memilih EGL config yang cocok untuk GLES 3");
+                error!("Gagal memilih EGL config untuk GLES 3");
                 return None;
             }
 
@@ -97,7 +108,7 @@ impl GraphicsContext {
             ];
             let context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs.as_ptr());
             if context == EGL_NO_CONTEXT {
-                error!("Gagal membuat EGL context untuk OpenGL ES 3");
+                error!("Gagal membuat EGL context");
                 return None;
             }
 
@@ -115,8 +126,46 @@ impl GraphicsContext {
                 return None;
             }
 
-            info!("OpenGL ES 3.2 Context berhasil diaktifkan!");
-            Some(Self { display, surface, context, _window: window })
+            info!("OpenGL ES 3.2 Context & Surface aktif!");
+
+            // 2. Load & Upload Tekstur play.png ke GPU
+            let mut texture_id: u32 = 0;
+            match image::load_from_memory(png_bytes) {
+                Ok(img) => {
+                    let rgba = img.to_rgba8();
+                    let (width, height) = (rgba.width() as i32, rgba.height() as i32);
+                    let pixels = rgba.into_raw();
+
+                    glGenTextures(1, &mut texture_id);
+                    glBindTexture(GL_TEXTURE_2D, texture_id);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+                    glTexImage2D(
+                        GL_TEXTURE_2D,
+                        0,
+                        GL_RGBA as i32,
+                        width,
+                        height,
+                        0,
+                        GL_RGBA,
+                        GL_UNSIGNED_BYTE,
+                        pixels.as_ptr() as *const c_void,
+                    );
+                    info!("Tekstur play.png berhasil diunggah ke GPU! Resolusi: {}x{}", width, height);
+                }
+                Err(e) => {
+                    error!("Gagal mendecode PNG saat inisialisasi GPU: {}", e);
+                }
+            }
+
+            Some(Self {
+                display,
+                surface,
+                context,
+                _window: window,
+                texture_id,
+            })
         }
     }
 }
@@ -144,24 +193,19 @@ fn android_main(app: AndroidApp) {
         android_logger::Config::default().with_max_level(log::LevelFilter::Debug),
     );
 
-    info!("=== APLIKASI NATIVE RUST (PURE GLES 3.2) DIMULAI ===");
+    info!("=== APLIKASI NATIVE RUST (GLES 3.2 + TEXTURE) DIMULAI ===");
 
-    // 1. Load play.png dari Assets
+    // 1. Baca file play.png dari folder assets/ ke dalam memori byte buffer
+    let mut png_buffer = Vec::new();
     let asset_manager = app.asset_manager();
     if let Some(mut asset) = asset_manager.open(c"play.png") {
-        let mut buffer = Vec::new();
-        if asset.read_to_end(&mut buffer).is_ok() {
-            match image::load_from_memory(&buffer) {
-                Ok(img) => {
-                    info!("PNG berhasil didekode! Resolusi: {}x{}", img.width(), img.height());
-                }
-                Err(e) => {
-                    error!("Gagal mendecode PNG: {}", e);
-                }
-            }
+        if asset.read_to_end(&mut png_buffer).is_ok() {
+            info!("File play.png berhasil dibaca dari assets ({} bytes)", png_buffer.len());
+        } else {
+            error!("Gagal membaca isi file play.png!");
         }
     } else {
-        error!("Gagal menemukan play.png di folder assets!");
+        error!("Gagal menemukan play.png di dalam folder assets!");
     }
 
     let mut animating = false;
@@ -172,9 +216,9 @@ fn android_main(app: AndroidApp) {
         app.poll_events(Some(std::time::Duration::from_millis(16)), |event| {
             match event {
                 PollEvent::Main(MainEvent::InitWindow { .. }) => {
-                    info!("Window Android aktif! Menyiapkan EGL...");
+                    info!("Window Android aktif! Menyiapkan EGL & GPU...");
                     if let Some(window) = app.native_window() {
-                        gfx = unsafe { GraphicsContext::init(window) };
+                        gfx = unsafe { GraphicsContext::init(window, &png_buffer) };
                         if gfx.is_some() {
                             animating = true;
                         }
@@ -202,8 +246,12 @@ fn android_main(app: AndroidApp) {
         if animating {
             if let Some(ref g) = gfx {
                 unsafe {
+                    // Membersihkan layar dengan warna latar belakang ungu gelap
                     glClearColor(0.08, 0.08, 0.22, 1.0);
                     glClear(GL_COLOR_BUFFER_BIT);
+                    
+                    // TODO: Render quad sprite menggunakan g.texture_id di sini
+                    
                     eglSwapBuffers(g.display, g.surface);
                 }
             }
